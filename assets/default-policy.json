@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "language": "zh-CN",
+  "branch_prefix": "codex",
+  "default_mode": "normal",
+  "default_ship_behavior": "suggest_only",
+  "allow_code_changes_on_patrol": false,
+  "write_patrol_to_state": true,
+  "validation_order": [
+    "repo-native",
+    "lint",
+    "test",
+    "build"
+  ],
+  "task_storage_preference": [
+    "scripts/dev",
+    "TASKS.md",
+    "docs/worklogs",
+    ".codex/TASKS.md",
+    ".codex/worklogs"
+  ],
+  "work_item": {
+    "create_on_routes": [
+      "new",
+      "continue",
+      "hotfix",
+      "ship"
+    ],
+    "task_status_on_kickoff": "active"
+  },
+  "route_defaults": {
+    "new": {
+      "mode": "normal",
+      "create_work_item": true
+    },
+    "continue": {
+      "mode": "normal",
+      "create_work_item": true
+    },
+    "review": {
+      "mode": "normal",
+      "create_work_item": false
+    },
+    "hotfix": {
+      "mode": "fast",
+      "create_work_item": true
+    },
+    "ship": {
+      "mode": "normal",
+      "create_work_item": true
+    }
+  },
+  "patrol_presets": {
+    "morning": {
+      "label": "晨检",
+      "route_bias": "continue",
+      "focus": [
+        "summarize repo status",
+        "highlight active tasks",
+        "recommend the best next step"
+      ]
+    },
+    "end-of-day": {
+      "label": "收工检查",
+      "route_bias": "ship",
+      "focus": [
+        "check dirty changes",
+        "check unsynced tasks",
+        "suggest whether to ship or park"
+      ]
+    },
+    "pre-ship": {
+      "label": "预发版巡检",
+      "route_bias": "ship",
+      "focus": [
+        "check ship readiness",
+        "list missing validation",
+        "draft branch and commit plan"
+      ]
+    },
+    "resume": {
+      "label": "续做接力",
+      "route_bias": "continue",
+      "focus": [
+        "recover last state",
+        "identify next work item",
+        "resume the smallest useful loop"
+      ]
+    }
+  }
+}

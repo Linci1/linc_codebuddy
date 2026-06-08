@@ -1,0 +1,10 @@
+interface:
+  display_name: "Linc CodeBuddy"
+  short_description: "个人开发总控：先侦测仓库，再路由执行与交付"
+  icon_small: "./assets/linc-codebuddy-small.svg"
+  icon_large: "./assets/linc-codebuddy-large.svg"
+  brand_color: "#0B6E5E"
+  default_prompt: "Use $linc_codebuddy to run my personal harness-based dev workflow: default to the unified `scripts/run_agent.py` entrypoint for intake, patrol, kickoff, and ship flows, honor the structured policy, scaffold route-specific work items when needed, and keep the whole loop in Chinese. 全程中文。"
+
+policy:
+  allow_implicit_invocation: true
