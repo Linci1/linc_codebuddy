@@ -5,10 +5,11 @@ from __future__ import annotations
 
 import argparse
 import re
-import subprocess
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+
+from lib import choose_task_file, get_repo_root
 
 
 SECTION_ORDER = ["Active", "Waiting On", "Someday", "Done"]
@@ -19,27 +20,6 @@ TASK_RE = re.compile(r"^- \[(?: |x)\] ")
 class Block:
     kind: str
     lines: list[str]
-
-
-def get_repo_root(path: Path) -> Path:
-    result = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
-        cwd=path,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode == 0:
-        return Path(result.stdout.strip()).resolve()
-    return path.resolve()
-
-
-def choose_task_file(root: Path) -> Path:
-    if (root / "TASKS.md").exists():
-        return root / "TASKS.md"
-    if (root / ".codex" / "TASKS.md").exists():
-        return root / ".codex" / "TASKS.md"
-    return root / ".codex" / "TASKS.md"
 
 
 def init_task_file(task_file: Path) -> None:
@@ -242,7 +222,7 @@ def main() -> int:
     done_parser.add_argument("title", help="Task title")
 
     args = parser.parse_args()
-    repo_root = get_repo_root(Path(args.repo))
+    repo_root, _ = get_repo_root(Path(args.repo))
     task_file = choose_task_file(repo_root)
 
     if args.command == "add":

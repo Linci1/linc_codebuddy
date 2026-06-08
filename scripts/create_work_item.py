@@ -4,14 +4,17 @@
 from __future__ import annotations
 
 import argparse
-import re
+import json
 import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from lib import get_repo_root, slugify
 
-SKILL_ROOT = Path(__file__).resolve().parents[1]
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+SKILL_ROOT = SCRIPT_DIR.parent
 TEMPLATE_DIR = SKILL_ROOT / "assets" / "work-item-templates"
 
 ROUTE_DEFAULTS: dict[str, dict[str, Any]] = {
@@ -69,24 +72,6 @@ ROUTE_DEFAULTS: dict[str, dict[str, Any]] = {
         "notes": ["未获明确要求时，做到可提交状态即可", "提交说明优先写业务价值"],
     },
 }
-
-
-def slugify(text: str) -> str:
-    slug = re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower()
-    return slug or "work-item"
-
-
-def get_repo_root(path: Path) -> Path:
-    result = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
-        cwd=path,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode == 0:
-        return Path(result.stdout.strip()).resolve()
-    return path.resolve()
 
 
 def choose_worklog_dir(root: Path) -> Path:
@@ -163,6 +148,135 @@ def replace_tokens(template: str, values: dict[str, str]) -> str:
     return rendered
 
 
+def _populate_review_from_diff(repo_root: Path) -> dict[str, Any]:
+    """Collect git diff and log info for the review route."""
+    context: dict[str, Any] = {}
+
+    diff_stat = subprocess.run(
+        ["git", "diff", "--stat"],
+        cwd=repo_root, capture_output=True, text=True, check=False,
+    )
+    if diff_stat.returncode == 0 and diff_stat.stdout.strip():
+        context["review_scope"] = [f"目标 diff：\n{diff_stat.stdout.strip()}"]
+
+    status = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=repo_root, capture_output=True, text=True, check=False,
+    )
+    if status.returncode == 0 and status.stdout.strip():
+        status_list = "\n".join(f"  {line}" for line in status.stdout.strip().splitlines())
+        context["review_scope"] = (context.get("review_scope") or ["目标文件：待补充"]) + [
+            f"当前状态：\n{status_list}"
+        ]
+
+    log = subprocess.run(
+        ["git", "log", "--oneline", "-5"],
+        cwd=repo_root, capture_output=True, text=True, check=False,
+    )
+    if log.returncode == 0 and log.stdout.strip():
+        log_list = "\n".join(f"  {line}" for line in log.stdout.strip().splitlines())
+        context["findings_capture"] = [f"最近 5 个提交：\n{log_list}"]
+
+    branch = subprocess.run(
+        ["git", "branch", "--show-current"],
+        cwd=repo_root, capture_output=True, text=True, check=False,
+    )
+    if branch.returncode == 0 and branch.stdout.strip():
+        context["validation_evidence"] = [
+            f"当前 branch：{branch.stdout.strip()}",
+            "已运行验证：待补充",
+        ]
+
+    return context
+
+
+def _load_previous_context(repo_root: Path) -> dict[str, Any]:
+    """Load context from the previous work item for the continue route."""
+    result = subprocess.run(
+        ["python3", str(SCRIPT_DIR / "agent_state.py"), "--repo", str(repo_root), "show", "--json"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return {}
+
+    try:
+        state = json.loads(result.stdout).get("state", {})
+    except json.JSONDecodeError:
+        return {}
+
+    context: dict[str, Any] = {}
+    prev_work_item = state.get("last_work_item")
+    if prev_work_item:
+        context["resume_context"] = [f"上轮任务文件：{prev_work_item}"]
+        prev_path = Path(prev_work_item)
+        if prev_path.exists():
+            _parse_previous_work_item(prev_path, context)
+
+    diff_result = subprocess.run(
+        ["git", "diff", "--stat"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if diff_result.returncode == 0 and diff_result.stdout.strip():
+        context["resume_context"] = (context.get("resume_context") or []) + [
+            f"当前 diff：\n{diff_result.stdout.strip()}"
+        ]
+        context["done_so_far"] = ["已完成内容（基于 diff 推断）：待确认后补充"]
+
+    branch_result = subprocess.run(
+        ["git", "branch", "--show-current"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if branch_result.returncode == 0 and branch_result.stdout.strip():
+        context["resume_context"] = (context.get("resume_context") or []) + [
+            f"当前 branch：{branch_result.stdout.strip()}"
+        ]
+
+    return context
+
+
+def _parse_previous_work_item(path: Path, context: dict[str, Any]) -> None:
+    """Extract Goal, Scope, Plan from a previous work item markdown file."""
+    try:
+        content = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return
+
+    sections: dict[str, list[str]] = {}
+    current_section: str | None = None
+    for line in content.splitlines():
+        if line.startswith("## "):
+            current_section = line[3:].strip()
+            sections.setdefault(current_section, [])
+        elif current_section:
+            sections[current_section].append(line)
+
+    if "Goal" in sections:
+        goal_lines = [line for line in sections["Goal"] if line.strip() and not line.startswith("<!--")]
+        if goal_lines:
+            context["done_so_far"] = [f"上轮 Goal：{' '.join(goal_lines)[:200]}"]
+
+    if "Scope" in sections:
+        scope_lines = [line for line in sections["Scope"] if line.strip()]
+        if scope_lines:
+            context["resume_context"] = (context.get("resume_context") or []) + [
+                f"上轮 Scope：{' '.join(scope_lines)[:200]}"
+            ]
+
+    if "Plan" in sections:
+        plan_lines = [line for line in sections["Plan"] if line.strip().startswith("- [")]
+        if plan_lines:
+            context["this_round_focus"] = [f"上轮 Plan 包含 {len(plan_lines)} 个步骤，请确认本轮焦点"]
+
+
 def build_content(
     title: str,
     route: str,
@@ -174,10 +288,30 @@ def build_content(
     plan: list[str],
     scope: str | None,
     notes: list[str],
+    context_overrides: dict[str, Any] | None = None,
 ) -> str:
     now = datetime.now().astimezone()
     defaults = ROUTE_DEFAULTS[route]
     template = load_template(route)
+    resume_context = list(defaults.get("resume_context", ["待补充"]))
+    done_so_far = list(defaults.get("done_so_far", ["待补充"]))
+    this_round_focus = list(defaults.get("this_round_focus", ["待补充"]))
+    review_scope = list(defaults.get("review_scope", ["待补充"]))
+    findings_capture = list(defaults.get("findings_capture", ["待补充"]))
+    validation_evidence = list(defaults.get("validation_evidence", ["待补充"]))
+    if context_overrides:
+        if "resume_context" in context_overrides:
+            resume_context = context_overrides["resume_context"]
+        if "done_so_far" in context_overrides:
+            done_so_far = context_overrides["done_so_far"]
+        if "this_round_focus" in context_overrides:
+            this_round_focus = context_overrides["this_round_focus"]
+        if "review_scope" in context_overrides:
+            review_scope = context_overrides["review_scope"]
+        if "findings_capture" in context_overrides:
+            findings_capture = context_overrides["findings_capture"]
+        if "validation_evidence" in context_overrides:
+            validation_evidence = context_overrides["validation_evidence"]
     values = {
         "title": title,
         "created_at": now.strftime("%Y-%m-%d %H:%M %Z"),
@@ -190,12 +324,12 @@ def build_content(
         "risks": render_bullets(risks or defaults["risks"]),
         "plan_checklist": render_bullets(plan or defaults["plan"], checked=True),
         "notes": render_bullets(notes or defaults["notes"]),
-        "resume_context": render_bullets(defaults.get("resume_context", ["待补充"])),
-        "done_so_far": render_bullets(defaults.get("done_so_far", ["待补充"])),
-        "this_round_focus": render_bullets(defaults.get("this_round_focus", ["待补充"])),
-        "review_scope": render_bullets(defaults.get("review_scope", ["待补充"])),
-        "findings_capture": render_bullets(defaults.get("findings_capture", ["待补充"])),
-        "validation_evidence": render_bullets(defaults.get("validation_evidence", ["待补充"])),
+        "resume_context": render_bullets(resume_context),
+        "done_so_far": render_bullets(done_so_far),
+        "this_round_focus": render_bullets(this_round_focus),
+        "review_scope": render_bullets(review_scope),
+        "findings_capture": render_bullets(findings_capture),
+        "validation_evidence": render_bullets(validation_evidence),
         "symptoms": render_bullets(defaults.get("symptoms", ["待补充"])),
         "fix_boundary": render_bullets(defaults.get("fix_boundary", ["待补充"])),
         "rollback_followup": render_bullets(defaults.get("rollback_followup", ["待补充"])),
@@ -221,9 +355,15 @@ def main() -> int:
     parser.add_argument("--note", action="append", default=[], help="Additional notes")
     args = parser.parse_args()
 
-    repo_root = get_repo_root(Path(args.repo))
+    repo_root, _ = get_repo_root(Path(args.repo))
     worklog_dir = choose_worklog_dir(repo_root)
     worklog_dir.mkdir(parents=True, exist_ok=True)
+
+    context_overrides = None
+    if args.route == "continue":
+        context_overrides = _load_previous_context(repo_root)
+    elif args.route == "review":
+        context_overrides = _populate_review_from_diff(repo_root)
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M")
     filename = f"{timestamp}-{slugify(args.title)}.md"
@@ -239,6 +379,7 @@ def main() -> int:
         plan=args.plan,
         scope=args.scope,
         notes=args.note,
+        context_overrides=context_overrides,
     )
     output_path.write_text(content, encoding="utf-8")
     print(output_path)

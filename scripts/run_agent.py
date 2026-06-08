@@ -5,27 +5,16 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 from pathlib import Path
 from typing import Any
 
+from lib import get_repo_root, run
 from policy_loader import load_default_policy, load_effective_policy, write_repo_policy
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROUTES = ["new", "continue", "review", "hotfix", "ship"]
 PATROL_PRESETS = ["morning", "end-of-day", "pre-ship", "resume"]
-
-
-def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, check=False)
-
-
-def get_repo_root(path: Path) -> Path:
-    result = run(["git", "rev-parse", "--show-toplevel"], path)
-    if result.returncode == 0:
-        return Path(result.stdout.strip()).resolve()
-    return path.resolve()
 
 
 def run_script_json(script_name: str, args: list[str], repo_root: Path) -> dict[str, Any]:
@@ -281,6 +270,17 @@ def command_policy_init(repo_root: Path, force: bool) -> dict[str, Any]:
     }
 
 
+def command_onboard() -> dict[str, Any]:
+    from onboard import main as onboard_main
+
+    onboard_main()
+    return {
+        "command": "onboard",
+        "repo_root": "",
+        "summary": "onboarding completed",
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default=".", help="Repository path")
@@ -306,23 +306,79 @@ def main() -> int:
     policy_parser = subparsers.add_parser("policy-init", help="Initialize a repo-local policy override")
     policy_parser.add_argument("--force", action="store_true", help="Overwrite an existing repo-local policy")
 
-    args = parser.parse_args()
-    repo_root = get_repo_root(Path(args.repo))
+    subparsers.add_parser("onboard", help="Run first-time setup and profile configuration")
 
-    if args.command == "intake":
-        payload = command_intake(repo_root)
-    elif args.command == "patrol":
-        payload = command_patrol(repo_root, args.preset, args.no_state_write)
-    elif args.command == "kickoff":
-        payload = command_kickoff(repo_root, args.title, args.route, args.mode)
-    elif args.command == "ship":
-        payload = command_ship(repo_root, args.title)
-    elif args.command == "state":
-        payload = command_state(repo_root)
-    elif args.command == "policy-init":
-        payload = command_policy_init(repo_root, args.force)
+    # workspace subcommands
+    ws_parser = subparsers.add_parser("workspace", help="Manage cross-repo workspace")
+    ws_sub = ws_parser.add_subparsers(dest="workspace_command", required=True)
+    ws_add = ws_sub.add_parser("add", help="Register a repo")
+    ws_add.add_argument("path", help="Path to repository")
+    ws_add.add_argument("--alias", help="Optional alias")
+    ws_remove = ws_sub.add_parser("remove", help="Remove a repo")
+    ws_remove.add_argument("identifier", help="Alias or path")
+    ws_sub.add_parser("list", help="List all repos")
+    ws_status = ws_sub.add_parser("status", help="Update and show repo status")
+    ws_status.add_argument("identifier", nargs="?", help="Optional alias")
+
+    args = parser.parse_args()
+
+    if args.command == "onboard":
+        payload = command_onboard()
+    elif args.command == "workspace":
+        from workspace import list_repos, register, remove, status_lines, update_status
+
+        if args.workspace_command == "add":
+            alias = register(Path(args.path).resolve(), args.alias)
+            payload = {
+                "command": "workspace",
+                "subcommand": "add",
+                "alias": alias,
+                "path": str(Path(args.path).resolve()),
+                "summary": f"registered {alias}",
+            }
+        elif args.workspace_command == "remove":
+            ok = remove(args.identifier)
+            payload = {
+                "command": "workspace",
+                "subcommand": "remove",
+                "identifier": args.identifier,
+                "removed": ok,
+                "summary": "removed" if ok else "not found",
+            }
+        elif args.workspace_command == "list":
+            repos = list_repos()
+            payload = {
+                "command": "workspace",
+                "subcommand": "list",
+                "repos": repos,
+                "summary": f"{len(repos)} repo(s)",
+            }
+        elif args.workspace_command == "status":
+            repos = update_status(args.identifier)
+            payload = {
+                "command": "workspace",
+                "subcommand": "status",
+                "identifier": args.identifier,
+                "repos": repos,
+                "summary": f"{len(repos)} repo(s)",
+            }
     else:
-        raise RuntimeError(f"Unknown command: {args.command}")
+        repo_root, _ = get_repo_root(Path(args.repo))
+
+        if args.command == "intake":
+            payload = command_intake(repo_root)
+        elif args.command == "patrol":
+            payload = command_patrol(repo_root, args.preset, args.no_state_write)
+        elif args.command == "kickoff":
+            payload = command_kickoff(repo_root, args.title, args.route, args.mode)
+        elif args.command == "ship":
+            payload = command_ship(repo_root, args.title)
+        elif args.command == "state":
+            payload = command_state(repo_root)
+        elif args.command == "policy-init":
+            payload = command_policy_init(repo_root, args.force)
+        else:
+            raise RuntimeError(f"Unknown command: {args.command}")
 
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))

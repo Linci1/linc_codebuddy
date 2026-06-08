@@ -5,28 +5,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from lib import get_repo_root, now_iso, run
+
 
 DEFAULT_STATE_RELATIVE = Path(".codex/linc_codebuddy/state.json")
-
-
-def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, check=False)
-
-
-def now_iso() -> str:
-    return datetime.now().astimezone().isoformat(timespec="seconds")
-
-
-def get_repo_root(path: Path) -> Path:
-    result = run(["git", "rev-parse", "--show-toplevel"], path)
-    if result.returncode == 0:
-        return Path(result.stdout.strip()).resolve()
-    return path.resolve()
 
 
 def state_path_for_repo(repo_root: Path) -> Path:
@@ -41,6 +26,7 @@ def default_state(repo_root: Path) -> dict[str, Any]:
         "last_work_item": None,
         "last_summary": None,
         "last_patrol": None,
+        "work_item_history": [],
         "notes": [],
         "updated_at": now_iso(),
     }
@@ -64,6 +50,8 @@ def load_state(repo_root: Path) -> tuple[Path, dict[str, Any]]:
         data["repo_root"] = str(repo_root)
     if "notes" not in data or not isinstance(data["notes"], list):
         data["notes"] = []
+    if "work_item_history" not in data or not isinstance(data["work_item_history"], list):
+        data["work_item_history"] = []
     return path, data
 
 
@@ -88,6 +76,11 @@ def print_human(data: dict[str, Any], path: Path) -> None:
         print("notes:")
         for item in data["notes"]:
             print(f"  - {item}")
+    history = data.get("work_item_history") or []
+    if history:
+        print("work_item_history:")
+        for entry in history[-5:]:
+            print(f"  - [{entry.get('route', '?')}] {entry.get('work_item', '?')} ({entry.get('timestamp', '?')})")
 
 
 def main() -> int:
@@ -124,7 +117,7 @@ def main() -> int:
     clear_parser.add_argument("--patrol", action="store_true", help="Clear patrol snapshot")
 
     args = parser.parse_args()
-    repo_root = get_repo_root(Path(args.repo))
+    repo_root, _ = get_repo_root(Path(args.repo))
     path, data = load_state(repo_root)
 
     if args.command == "set":
@@ -134,6 +127,13 @@ def main() -> int:
             data["last_mode"] = args.mode
         if args.work_item is not None:
             data["last_work_item"] = args.work_item
+            data["work_item_history"].append(
+                {
+                    "work_item": args.work_item,
+                    "route": args.route or data.get("last_route"),
+                    "timestamp": now_iso(),
+                }
+            )
         if args.summary is not None:
             data["last_summary"] = args.summary
         save_state(path, data)

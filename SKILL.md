@@ -6,6 +6,28 @@ maturity: stable
 
 # linc_codebuddy
 
+## 安装
+
+```bash
+cd /path/to/linc_codebuddy
+bash install.sh
+```
+
+这会创建 `~/.local/bin/linc-codebuddy` 全局命令。确保 `~/.local/bin` 在 `PATH` 中：
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+首次使用时运行引导配置：
+
+```bash
+linc-codebuddy onboard
+```
+
+引导会收集：名字、默认语言、分支前缀、默认模式、工作区目录、编辑器偏好，写入 `~/.linc_codebuddy/profile.json`。
+
 ## 角色定位
 
 - 你是我的个人开发智能体，不是只会照本宣科的流程提示词。

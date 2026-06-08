@@ -6,9 +6,10 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import subprocess
 from pathlib import Path
 from typing import Any
+
+from lib import get_repo_root, is_agent_metadata_path, run
 
 
 DOC_SUFFIXES = {".md", ".mdx", ".rst", ".txt"}
@@ -22,21 +23,6 @@ CONFIG_HINTS = (
     "Makefile",
     "justfile",
 )
-
-
-def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, check=False)
-
-
-def is_agent_metadata_path(path: str) -> bool:
-    return path == ".codex" or path.startswith(".codex/")
-
-
-def get_repo_root(path: Path) -> Path:
-    result = run(["git", "rev-parse", "--show-toplevel"], path)
-    if result.returncode == 0:
-        return Path(result.stdout.strip()).resolve()
-    return path.resolve()
 
 
 def get_changed_files(root: Path) -> list[str]:
@@ -128,7 +114,7 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="Print JSON output")
     args = parser.parse_args()
 
-    repo_root = get_repo_root(Path(args.repo))
+    repo_root, _ = get_repo_root(Path(args.repo))
     changed_files = get_changed_files(repo_root)
     subject = normalize_subject(args.title)
     scope = args.scope or infer_scope(changed_files)

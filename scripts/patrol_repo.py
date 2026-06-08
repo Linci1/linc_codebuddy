@@ -5,24 +5,15 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from lib import choose_task_file, get_repo_root, read_json, run
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-
-
-def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, check=False)
-
-
-def get_repo_root(path: Path) -> Path:
-    result = run(["git", "rev-parse", "--show-toplevel"], path)
-    if result.returncode == 0:
-        return Path(result.stdout.strip()).resolve()
-    return path.resolve()
+WORKSPACE_PATH = Path.home() / ".linc_codebuddy" / "workspace.json"
 
 
 def load_json_from_script(script_name: str, args: list[str], cwd: Path) -> dict[str, Any]:
@@ -31,14 +22,6 @@ def load_json_from_script(script_name: str, args: list[str], cwd: Path) -> dict[
     if result.returncode != 0:
         raise RuntimeError(f"{script_name} failed: {result.stderr.strip()}")
     return json.loads(result.stdout)
-
-
-def choose_task_file(root: Path) -> Path:
-    if (root / "TASKS.md").exists():
-        return root / "TASKS.md"
-    if (root / ".codex" / "TASKS.md").exists():
-        return root / ".codex" / "TASKS.md"
-    return root / ".codex" / "TASKS.md"
 
 
 def parse_task_sections(task_file: Path) -> dict[str, list[str]]:
@@ -130,14 +113,7 @@ def print_human(payload: dict[str, Any]) -> None:
     print(f"summary: {payload['summary']}")
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--repo", default=".", help="Repository path")
-    parser.add_argument("--json", action="store_true", help="Print JSON output")
-    parser.add_argument("--no-state-write", action="store_true", help="Do not update agent state")
-    args = parser.parse_args()
-
-    repo_root = get_repo_root(Path(args.repo))
+def _patrol_single(repo_root: Path, no_state_write: bool) -> dict[str, Any]:
     bootstrap = load_json_from_script("bootstrap_repo.py", [str(repo_root)], repo_root)
     checks_payload = load_json_from_script("suggest_checks.py", ["--repo", str(repo_root)], repo_root)
     task_file = choose_task_file(repo_root)
@@ -157,7 +133,7 @@ def main() -> int:
     }
     payload["summary"] = human_summary(payload)
 
-    if not args.no_state_write:
+    if not no_state_write:
         run(
             [
                 "python3",
@@ -172,6 +148,53 @@ def main() -> int:
             ],
             repo_root,
         )
+
+    return payload
+
+
+def _patrol_workspace(args: argparse.Namespace) -> int:
+    workspace = read_json(WORKSPACE_PATH)
+    repos = workspace.get("repos", {})
+    if not repos:
+        print("No repos registered. Use 'linc-codebuddy workspace add <path>' first.")
+        return 1
+
+    results: dict[str, dict[str, Any]] = {}
+    for alias, info in repos.items():
+        repo_path = Path(info["path"])
+        if not repo_path.exists():
+            results[alias] = {"error": f"path not found: {info['path']}"}
+            continue
+        try:
+            results[alias] = _patrol_single(repo_path, args.no_state_write)
+        except RuntimeError as exc:
+            results[alias] = {"error": str(exc)}
+
+    if args.json:
+        print(json.dumps(results, ensure_ascii=False, indent=2))
+    else:
+        for alias, result in results.items():
+            if "error" in result:
+                print(f"{alias}: ERROR - {result['error']}")
+            else:
+                print(f"{alias}: {result['summary']}")
+        print(f"\nTotal: {len(results)} repo(s)")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--repo", default=".", help="Repository path")
+    parser.add_argument("--json", action="store_true", help="Print JSON output")
+    parser.add_argument("--no-state-write", action="store_true", help="Do not update agent state")
+    parser.add_argument("--workspace", action="store_true", help="Patrol all registered workspace repos")
+    args = parser.parse_args()
+
+    if args.workspace:
+        return _patrol_workspace(args)
+
+    repo_root, _ = get_repo_root(Path(args.repo))
+    payload = _patrol_single(repo_root, args.no_state_write)
 
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))

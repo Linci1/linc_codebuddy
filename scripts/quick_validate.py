@@ -6,22 +6,18 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
+from lib import run
 from policy_loader import load_default_policy
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 SKILL_ROOT = SCRIPT_DIR.parent
 ROUTES = ["new", "continue", "review", "hotfix", "ship"]
-
-
-def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, check=False)
 
 
 def required_files() -> list[Path]:

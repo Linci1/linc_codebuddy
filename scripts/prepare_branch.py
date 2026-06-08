@@ -5,29 +5,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
-import subprocess
 from pathlib import Path
 from typing import Any
 
+from lib import get_repo_root, run, slugify
+
 
 ROUTES = {"new", "continue", "review", "hotfix", "ship"}
-
-
-def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, check=False)
-
-
-def slugify(text: str) -> str:
-    slug = re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower()
-    return slug or "task"
-
-
-def get_repo_root(path: Path) -> tuple[Path, bool]:
-    result = run(["git", "rev-parse", "--show-toplevel"], path)
-    if result.returncode == 0:
-        return Path(result.stdout.strip()).resolve(), True
-    return path.resolve(), False
 
 
 def current_branch(root: Path, is_git_repo: bool) -> str | None:

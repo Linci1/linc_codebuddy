@@ -5,30 +5,16 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 from pathlib import Path
 from typing import Any
+
+from lib import detect_package_manager, get_repo_root, is_agent_metadata_path, run
 
 
 DOC_SUFFIXES = {".md", ".mdx", ".rst", ".txt"}
 TS_SUFFIXES = {".ts", ".tsx"}
 JS_SUFFIXES = {".js", ".jsx", ".mjs", ".cjs"}
 PY_SUFFIXES = {".py"}
-
-
-def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, check=False)
-
-
-def is_agent_metadata_path(path: str) -> bool:
-    return path == ".codex" or path.startswith(".codex/")
-
-
-def get_repo_root(path: Path) -> Path:
-    result = run(["git", "rev-parse", "--show-toplevel"], path)
-    if result.returncode == 0:
-        return Path(result.stdout.strip()).resolve()
-    return path.resolve()
 
 
 def get_changed_files(root: Path) -> list[str]:
@@ -47,18 +33,6 @@ def get_changed_files(root: Path) -> list[str]:
             continue
         files.append(path)
     return files
-
-
-def detect_package_manager(root: Path) -> str:
-    if (root / "bun.lockb").exists() or (root / "bun.lock").exists():
-        return "bun"
-    if (root / "pnpm-workspace.yaml").exists():
-        return "pnpm"
-    if (root / "pnpm-lock.yaml").exists():
-        return "pnpm"
-    if (root / "yarn.lock").exists():
-        return "yarn"
-    return "npm"
 
 
 def node_command(manager: str, script: str) -> str:
@@ -155,7 +129,7 @@ def python_commands(root: Path, changed_files: list[str]) -> list[dict[str, Any]
 
 
 def node_commands(root: Path, changed_files: list[str]) -> list[dict[str, Any]]:
-    manager = detect_package_manager(root)
+    manager = detect_package_manager(root) or "npm"
     package = load_package_json(root)
     scripts = package.get("scripts") or {}
     suggestions: list[dict[str, Any]] = []
@@ -251,7 +225,7 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="Print JSON instead of plain text")
     args = parser.parse_args()
 
-    repo_root = get_repo_root(Path(args.repo))
+    repo_root, _ = get_repo_root(Path(args.repo))
     changed_files = get_changed_files(repo_root)
     suggestions = suggest_commands(repo_root, changed_files)
     payload = {

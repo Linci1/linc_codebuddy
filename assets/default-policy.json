@@ -35,7 +35,8 @@
     },
     "continue": {
       "mode": "normal",
-      "create_work_item": true
+      "create_work_item": true,
+      "inherit_context": true
     },
     "review": {
       "mode": "normal",

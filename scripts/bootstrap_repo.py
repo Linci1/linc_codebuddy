@@ -5,9 +5,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 from pathlib import Path
 from typing import Any
+
+from lib import detect_package_manager, get_repo_root, is_agent_metadata_path, read_json, run
 
 
 STACK_MARKERS = {
@@ -21,42 +22,11 @@ STACK_MARKERS = {
 REPO_SHAPE_MARKERS = ["pnpm-workspace.yaml", "turbo.json", "nx.json", "lerna.json"]
 
 
-def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, check=False)
-
-
 def extract_status_path(line: str) -> str:
     path = line[3:]
     if " -> " in path:
         path = path.split(" -> ", 1)[1]
     return path.strip()
-
-
-def is_agent_metadata_path(path: str) -> bool:
-    return path == ".codex" or path.startswith(".codex/")
-
-
-def get_repo_root(path: Path) -> tuple[Path, bool]:
-    result = run(["git", "rev-parse", "--show-toplevel"], path)
-    if result.returncode == 0:
-        return Path(result.stdout.strip()).resolve(), True
-    return path.resolve(), False
-
-
-def detect_package_manager(root: Path) -> str | None:
-    if (root / "bun.lockb").exists() or (root / "bun.lock").exists():
-        return "bun"
-    if (root / "pnpm-workspace.yaml").exists():
-        return "pnpm"
-    if (root / "pnpm-lock.yaml").exists():
-        return "pnpm"
-    if (root / "yarn.lock").exists():
-        return "yarn"
-    if (root / "package-lock.json").exists():
-        return "npm"
-    if (root / "package.json").exists():
-        return "npm"
-    return None
 
 
 def detect_stack(root: Path) -> list[str]:
@@ -73,15 +43,6 @@ def detect_repo_shape(root: Path) -> str:
     if (root / "apps").exists() and (root / "packages").exists():
         return "monorepo"
     return "single-package"
-
-
-def read_json(path: Path) -> dict[str, Any] | None:
-    if not path.exists():
-        return None
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
 
 
 def detect_node_details(root: Path) -> dict[str, Any]:
