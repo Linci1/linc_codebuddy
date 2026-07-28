@@ -28,15 +28,15 @@ automation prompt 只描述任务本身，不写调度信息。推荐写法：
 
 ### 晨检
 
-“使用 [$linc_codebuddy](/Users/ciondlin/skills/linc_codebuddy/SKILL.md) 对当前工作区做一次晨检：优先用统一入口做 `run_agent patrol --preset morning`，总结仓库状态、Active 任务、推荐路由和今天最值得推进的一步；默认不改代码，除非我在任务里明确要求继续实现。”
+“使用 [$linc_codebuddy](/Users/ciondlin/agents/linc_codebuddy/SKILL.md) 对当前工作区做一次晨检：优先用统一入口做 `run_agent patrol --preset morning`，总结仓库状态、Active 任务、推荐路由和今天最值得推进的一步；默认不改代码，除非我在任务里明确要求继续实现。”
 
 ### 收工检查
 
-“使用 [$linc_codebuddy](/Users/ciondlin/skills/linc_codebuddy/SKILL.md) 做收工检查：优先用统一入口做 `run_agent patrol --preset end-of-day`，查看 dirty 改动、未同步任务、建议验证项和是否适合进入 ship；默认不改代码，只输出结论和下一步建议。”
+“使用 [$linc_codebuddy](/Users/ciondlin/agents/linc_codebuddy/SKILL.md) 做收工检查：优先用统一入口做 `run_agent patrol --preset end-of-day`，查看 dirty 改动、未同步任务、建议验证项和是否适合进入 ship；默认不改代码，只输出结论和下一步建议。”
 
 ### 预发版巡检
 
-“使用 [$linc_codebuddy](/Users/ciondlin/skills/linc_codebuddy/SKILL.md) 做预发版巡检：优先用统一入口做 `run_agent patrol --preset pre-ship` 或 `run_agent ship`，检查变更边界、建议验证、branch 和 commit 方案；默认不 push。”
+“使用 [$linc_codebuddy](/Users/ciondlin/agents/linc_codebuddy/SKILL.md) 做预发版巡检：优先用统一入口做 `run_agent patrol --preset pre-ship` 或 `run_agent ship`，检查变更边界、建议验证、branch 和 commit 方案；默认不 push。”
 
 ## 状态文件
 

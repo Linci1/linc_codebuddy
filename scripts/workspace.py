@@ -9,6 +9,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from agent_state import load_state
+from lifecycle import load_active_change
+
 WORKSPACE_DIR = Path.home() / ".linc_codebuddy"
 WORKSPACE_PATH = WORKSPACE_DIR / "workspace.json"
 
@@ -140,6 +143,36 @@ def update_status(identifier: str | None = None) -> list[dict[str, Any]]:
         save_workspace(workspace)
 
     return list_repos()
+
+
+def summarize_repos(repos: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return repository, lifecycle, blocker, and deterministic next-action facts."""
+    rows = []
+    for info in repos:
+        repo_path = Path(info["path"])
+        row = {
+            **info, "exists": repo_path.exists(), "change_id": None, "phase": None,
+            "level": None, "blocking": [], "next_action": None,
+        }
+        if repo_path.exists():
+            _, state = load_state(repo_path)
+            active = state.get("active", {})
+            row.update({
+                "change_id": active.get("change_id"), "phase": active.get("phase"),
+                "level": active.get("level"), "blocking": state.get("blocking", []),
+                "next_action": active.get("next_action"),
+            })
+            try:
+                change, _ = load_active_change(repo_path)
+                row.update({"change_id": change["id"], "phase": change["phase"], "level": change["level"]})
+                if change["phase"] == "verify":
+                    from quality import verification_summary
+
+                    row["next_action"] = verification_summary(repo_path, change["id"])["next_action"]
+            except FileNotFoundError:
+                pass
+        rows.append(row)
+    return rows
 
 
 def status_lines(repos: list[dict[str, Any]]) -> None:

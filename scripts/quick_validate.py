@@ -28,6 +28,10 @@ def required_files() -> list[Path]:
         SKILL_ROOT / "assets/linc-codebuddy-small.svg",
         SKILL_ROOT / "assets/linc-codebuddy-large.svg",
         SCRIPT_DIR / "run_agent.py",
+        SCRIPT_DIR / "lifecycle.py",
+        SCRIPT_DIR / "quality.py",
+        SCRIPT_DIR / "gitlab_sync.py",
+        SCRIPT_DIR / "pilot.py",
         SCRIPT_DIR / "quick_validate.py",
     ]
     files.extend(SKILL_ROOT.glob("assets/work-item-templates/*.md"))
@@ -76,6 +80,18 @@ def validate_py_compile() -> dict[str, Any]:
     scripts = sorted(str(path) for path in SCRIPT_DIR.glob("*.py"))
     result = run(["python3", "-B", "-m", "py_compile", *scripts], SKILL_ROOT)
     return {"ok": result.returncode == 0, "stderr": result.stderr.strip(), "scripts": scripts}
+
+
+def validate_unit_tests() -> dict[str, Any]:
+    result = run(
+        ["python3", "-B", "-m", "unittest", "discover", "-s", "tests", "-v"],
+        SKILL_ROOT,
+    )
+    return {
+        "ok": result.returncode == 0,
+        "stdout": result.stdout.strip()[-2000:],
+        "stderr": result.stderr.strip()[-2000:],
+    }
 
 
 def validate_routes_and_agent_entry() -> dict[str, Any]:
@@ -158,6 +174,7 @@ def main() -> int:
         "openai_yaml": validate_openai_yaml(),
         "policy": validate_policy(),
         "py_compile": validate_py_compile(),
+        "unit_tests": validate_unit_tests(),
         "agent_flow": validate_routes_and_agent_entry(),
     }
     success = all(item.get("ok") for item in checks.values())

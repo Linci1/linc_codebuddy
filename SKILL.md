@@ -1,6 +1,6 @@
 ---
 name: linc_codebuddy
-description: 个人基于 harness 的开发总控智能体。用于在新需求、继续开发、代码评审、热修、提交流程中，先做任务路由与仓库侦测，再按仓库约定完成计划、实现、验证、任务记录与交付。触发词包括“按开发流程来”“继续执行开发流程”“走 dev-agent”“new”“continue”“review”“hotfix”“ship”“帮我规范提交”等。
+description: 开发工具集（Skill + CLI + MCP Server）。提供 lcb_classify/lcb_auto/lcb_next/lcb_ship/lcb_patrol 等 MCP tools，按风险使用 L0-L3 自适应流程。触发词包括”按开发流程来””继续开发””new””continue””review””hotfix””ship””帮我规范提交”等。
 maturity: stable
 ---
 
@@ -35,6 +35,54 @@ linc-codebuddy onboard
 - 优先复用仓库现有约定，不擅自引入新的目录结构、脚本风格或发布流程。
 - 只修改当前任务相关范围，不混入无关变更，不替用户回滚未知改动。
 - 默认全程中文，输出保持简洁，但要交代清楚做了什么、怎么验证、下一步是什么。
+
+## 双模式：对话 / 程序化
+
+本 skill 支持两种使用模式：
+
+### 对话模式（通过 Skill 工具）
+当 Claude Code 在对话中加载本 skill 时，进行完整的 repo intake → 路由 → 计划 → 实现 → 验证流程。适合需要和人讨论、确认、解释的开发任务。
+
+### 程序化模式（通过 CLI）
+当其他 agent 需要以程序化方式使用本工具集时，直接调用 CLI：
+
+```bash
+linc-codebuddy --json --repo <path> auto              # 自动检测并推荐下一步
+linc-codebuddy --json --repo <path> auto --execute    # 自动检测并执行
+linc-codebuddy --json --repo <path> classify "任务描述" # L0-L3 风险分级
+linc-codebuddy --json --repo <path> next              # 返回唯一推荐动作
+linc-codebuddy --json --repo <path> ship --title "X" --task-id TASK-... --execute
+linc-codebuddy --json --repo <path> patrol --preset morning     # 巡检
+```
+
+`--json` 输出结构化 JSON，agent 自行解析 `detected_route` 和 `action` 字段决定后续行为。agent 不需要知道该调 `ship` 还是 `continue`——`auto` 子命令自动检测。
+
+### MCP Server 模式（自动发现）
+本工具集已注册为 Claude Code MCP server。所有 agent 启动时会自动在 tool list 中看到以下工具：
+
+| Tool | 用途 |
+|------|------|
+| `lcb_classify` | 按风险分为 L0-L3 并返回最小必要流程 |
+| `lcb_auto` | 自动检测仓库状态并推荐下一步 |
+| `lcb_next` | 返回当前唯一推荐动作和是否可继续编码 |
+| `lcb_ship` | 端到端提交流程 |
+| `lcb_patrol` | 仓库巡检 |
+| `lcb_intake` | 仓库环境侦测 |
+| `lcb_state` | 查看 agent 状态 |
+| `lcb_kickoff` | 创建 work item |
+
+其他 agent 无需任何配置，Claude Code 启动后即可调用。仓库侦测推荐 `lcb_auto(repo_path)`，恢复工作推荐 `lcb_next(repo_path)`。
+
+V2 起，work item 和 task 使用稳定 ID。可执行 ship 必须显式提供 `task_id`，并且只会关闭该任务；未提供 ID 时仍可生成 ship 计划，但不会执行提交或批量关闭 Active 任务。
+
+V2.1 起，kickoff 会自动选择治理深度：
+
+- `L0`：文案、样式、小配置等明确可逆任务，只保留 task/state 和最小验证；
+- `L1`：普通 Bug 和局部功能，生成简短 work item；
+- `L2`：认证、权限、数据、API 或生产影响，要求更完整的分析与验证；
+- `L3`：新项目、整体架构或多里程碑工作，采用项目级规划。
+
+任务中发现新风险时使用 `classify --persist` 或 `lcb_classify(..., persist=true)` 升级。高风险硬规则不能降级；其他降级必须显式批准并记录理由。
 
 ## 何时使用
 
@@ -93,6 +141,8 @@ linc-codebuddy onboard
    - 纯 review：直接审查，不做实现
 
 ## 模式切换规则
+
+模式由 L0-L3 治理等级决定流程深度，`normal/fast` 只控制执行节奏，不能降低认证、权限、数据和生产风险等级。
 
 - **正常模式（默认）**
   - 适用于中大型需求、跨模块改动、需要明确验收和验证矩阵的任务。
