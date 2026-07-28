@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "EVD-002",
+  "change_id": "CHG-20260728-001-persist-normalized-state-and-pilot-evaluation",
+  "type": "command",
+  "status": "passed",
+  "summary": "pilot metrics produced a deterministic V3 no-go decision; quick validation passed",
+  "acceptance_ids": [
+    "ACC-002"
+  ],
+  "acceptance_fingerprints": {
+    "ACC-002": "fc32b5b20e7c7b42"
+  },
+  "requirement_ids": [],
+  "task_ids": [],
+  "requirement_fingerprints": {},
+  "command": "python3 -B scripts/quick_validate.py",
+  "exit_code": 0,
+  "environment": "local",
+  "reference": null,
+  "severity": null,
+  "executed_at": "2026-07-28T22:14:01+08:00"
+}

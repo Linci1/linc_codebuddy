@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "id": "CHG-20260728-001-persist-normalized-state-and-pilot-evaluation",
+  "project_id": "PRJ-linc-codebuddy",
+  "title": "Persist normalized state and pilot evaluation",
+  "level": "L1",
+  "phase": "verify",
+  "status": "active",
+  "problem": "same-schema legacy state defaults are repaired only in memory and real-project process cost is not measured",
+  "outcome": "repository state restores deterministically and pilot burden can be evaluated",
+  "in_scope": [],
+  "out_of_scope": [],
+  "requirements": [],
+  "acceptance": [
+    {
+      "id": "ACC-001",
+      "scenario": "loading incomplete schema-v2 state persists normalized defaults"
+    },
+    {
+      "id": "ACC-002",
+      "scenario": "pilot evaluation reports recovery, gate, evidence, and process burden metrics"
+    }
+  ],
+  "risks": [],
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Persist normalized current-schema state",
+      "status": "done"
+    },
+    {
+      "id": "TASK-002",
+      "title": "Add pilot evaluation and V3 decision",
+      "status": "done"
+    }
+  ],
+  "approvals": [],
+  "transitions": [
+    {
+      "from": "specify",
+      "to": "implement",
+      "actor": "codex",
+      "reason": "L1 specification and acceptance are complete",
+      "gate": {
+        "allowed": true,
+        "from_phase": "specify",
+        "target_phase": "implement",
+        "level": "L1",
+        "missing": [],
+        "warnings": [],
+        "next_action": "transition to implement",
+        "requires_approval": false,
+        "overridden": false,
+        "override": null
+      },
+      "approval_ref": null,
+      "at": "2026-07-28T22:13:12+08:00"
+    },
+    {
+      "from": "implement",
+      "to": "verify",
+      "actor": "codex",
+      "reason": "implementation and full validation completed",
+      "gate": {
+        "allowed": true,
+        "from_phase": "implement",
+        "target_phase": "verify",
+        "level": "L1",
+        "missing": [],
+        "warnings": [],
+        "next_action": "transition to verify",
+        "requires_approval": false,
+        "overridden": false,
+        "override": null
+      },
+      "approval_ref": null,
+      "at": "2026-07-28T22:14:01+08:00"
+    }
+  ],
+  "created_at": "2026-07-28T22:11:27+08:00",
+  "updated_at": "2026-07-28T22:14:01+08:00"
+}

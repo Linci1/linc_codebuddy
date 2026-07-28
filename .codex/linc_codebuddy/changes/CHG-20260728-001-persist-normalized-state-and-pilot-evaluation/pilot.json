@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "change_id": "CHG-20260728-001-persist-normalized-state-and-pilot-evaluation",
+  "observations": [
+    {
+      "metric": "recovery",
+      "value": 1.0,
+      "note": "active change restored from repository state",
+      "at": "2026-07-28T22:13:11+08:00"
+    },
+    {
+      "metric": "manual_context_rebuild_minutes",
+      "value": 0.0,
+      "note": "no manual reconstruction needed after state reload",
+      "at": "2026-07-28T22:13:11+08:00"
+    },
+    {
+      "metric": "false_gate_blocks",
+      "value": 0.0,
+      "note": "L1 direct specify-to-implement gate matched task risk",
+      "at": "2026-07-28T22:13:11+08:00"
+    },
+    {
+      "metric": "artifact_minutes",
+      "value": 3.0,
+      "note": "one change file plus pilot observations",
+      "at": "2026-07-28T22:13:11+08:00"
+    },
+    {
+      "metric": "long_task_resume_failures",
+      "value": 0.0,
+      "note": "no failed resume in this pilot",
+      "at": "2026-07-28T22:13:12+08:00"
+    },
+    {
+      "metric": "parallelizable_blocked_work",
+      "value": 0.0,
+      "note": "task was small and sequential",
+      "at": "2026-07-28T22:13:12+08:00"
+    },
+    {
+      "metric": "false_gate_blocks",
+      "value": 0.0,
+      "note": "verify-ready precedence corrected without adding governance steps",
+      "at": "2026-07-28T22:15:02+08:00"
+    }
+  ],
+  "created_at": "2026-07-28T22:13:11+08:00",
+  "updated_at": "2026-07-28T22:15:02+08:00"
+}

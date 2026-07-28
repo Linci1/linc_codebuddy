@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "EVD-001",
+  "change_id": "CHG-20260728-001-persist-normalized-state-and-pilot-evaluation",
+  "type": "command",
+  "status": "passed",
+  "summary": "37 unit and integration tests passed, including current-schema normalization",
+  "acceptance_ids": [
+    "ACC-001"
+  ],
+  "acceptance_fingerprints": {
+    "ACC-001": "51da85ff71449786"
+  },
+  "requirement_ids": [],
+  "task_ids": [],
+  "requirement_fingerprints": {},
+  "command": "python3 -B -m unittest discover -s tests -v",
+  "exit_code": 0,
+  "environment": "local",
+  "reference": null,
+  "severity": null,
+  "executed_at": "2026-07-28T22:14:01+08:00"
+}
