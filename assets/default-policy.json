@@ -6,6 +6,15 @@
   "default_ship_behavior": "suggest_only",
   "allow_code_changes_on_patrol": false,
   "write_patrol_to_state": true,
+  "adaptive_governance": {
+    "enabled": true,
+    "score_thresholds": {
+      "L0": 1,
+      "L1": 5,
+      "L2": 11,
+      "L3": 18
+    }
+  },
   "validation_order": [
     "repo-native",
     "lint",

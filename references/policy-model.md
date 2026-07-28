@@ -42,6 +42,11 @@
 - `work_item.create_on_routes`
 - `route_defaults`
 - `patrol_presets`
+- `adaptive_governance.score_thresholds`
+
+## 自适应治理
+
+V2.1 使用 L0-L3 分级。仓库 policy 可以调整六维评分阈值，但认证、权限、敏感信息、数据迁移和生产操作等硬信号仍受内置最低等级保护。流程中发现新风险时只会自动升级；降级需要显式批准和理由。
 
 ## 典型 override 示例
 
