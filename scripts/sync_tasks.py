@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from identity import extract_id, next_id
 from lib import choose_task_file, get_repo_root
 
 
@@ -100,6 +101,7 @@ def normalize_title(title: str) -> str:
     cleaned = title
     cleaned = cleaned.replace("**", "").replace("~~", "")
     cleaned = re.sub(r"^- \[(?: |x)\]\s*", "", cleaned)
+    cleaned = re.sub(r"^\[TASK-\d{8}-\d{3}\]\s*", "", cleaned)
     cleaned = re.sub(r"\s*\(\d{4}-\d{2}-\d{2}\)\s*$", "", cleaned)
     if " - " in cleaned:
         cleaned = cleaned.split(" - ", 1)[0]
@@ -111,6 +113,7 @@ def extract_title(line: str) -> str:
     if not match:
         return ""
     content = match.group(1).strip()
+    content = re.sub(r"^\[TASK-\d{8}-\d{3}\]\s*", "", content)
     content = content.replace("**", "").replace("~~", "")
     content = re.sub(r"\s*\(\d{4}-\d{2}-\d{2}\)\s*$", "", content)
     if " - " in content:
@@ -118,26 +121,33 @@ def extract_title(line: str) -> str:
     return content.strip()
 
 
-def find_task(sections: dict[str, list[str]], title: str) -> tuple[str | None, Block | None]:
-    wanted = normalize_title(title)
+def find_task(sections: dict[str, list[str]], identifier: str) -> tuple[str | None, Block | None]:
+    wanted_id = extract_id(identifier)
+    wanted = normalize_title(identifier)
     for section_name in SECTION_ORDER:
         blocks = build_blocks(sections[section_name])
         for block in blocks:
             if block.kind != "task":
                 continue
-            if normalize_title(extract_title(block.lines[0])) == wanted:
+            block_id = extract_id(block.lines[0])
+            if (wanted_id and block_id == wanted_id) or (not wanted_id and normalize_title(extract_title(block.lines[0])) == wanted):
                 return section_name, block
     return None, None
 
 
-def remove_task(sections: dict[str, list[str]], title: str) -> tuple[str | None, Block | None]:
-    wanted = normalize_title(title)
+def remove_task(sections: dict[str, list[str]], identifier: str) -> tuple[str | None, Block | None]:
+    wanted_id = extract_id(identifier)
+    wanted = normalize_title(identifier)
     for section_name in SECTION_ORDER:
         blocks = build_blocks(sections[section_name])
         next_blocks: list[Block] = []
         removed: Block | None = None
         for block in blocks:
-            if block.kind == "task" and normalize_title(extract_title(block.lines[0])) == wanted and removed is None:
+            block_id = extract_id(block.lines[0]) if block.kind == "task" else None
+            matches = (wanted_id and block_id == wanted_id) or (
+                not wanted_id and block.kind == "task" and normalize_title(extract_title(block.lines[0])) == wanted
+            )
+            if matches and removed is None:
                 removed = block
                 continue
             next_blocks.append(block)
@@ -147,20 +157,20 @@ def remove_task(sections: dict[str, list[str]], title: str) -> tuple[str | None,
     return None, None
 
 
-def format_open_task(title: str, context: str | None) -> Block:
-    line = f"- [ ] **{title}**"
+def format_open_task(task_id: str, title: str, context: str | None) -> Block:
+    line = f"- [ ] [{task_id}] **{title}**"
     if context:
         line += f" - {context}"
     return Block(kind="task", lines=[line])
 
 
-def format_done_task(existing: Block | None, title: str) -> Block:
+def format_done_task(existing: Block | None, task_id: str, title: str) -> Block:
     context = ""
     if existing is not None:
         line = existing.lines[0]
         if " - " in line:
             context = line.split(" - ", 1)[1].strip()
-    done_line = f"- [x] ~~{title}~~"
+    done_line = f"- [x] [{task_id}] ~~{title}~~"
     if context:
         done_line += f" - {context}"
     done_line += f" ({date.today().isoformat()})"
@@ -187,25 +197,36 @@ def write_task_file(task_file: Path, preamble: str, sections: dict[str, list[str
     task_file.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
 
 
-def add_task(task_file: Path, title: str, status: str, context: str | None) -> None:
+def add_task(task_file: Path, title: str, status: str, context: str | None, task_id: str | None = None) -> str:
     init_task_file(task_file)
     preamble, sections = parse_sections(task_file.read_text(encoding="utf-8"))
-    remove_task(sections, title)
+    existing_section, existing = find_task(sections, task_id or title)
+    resolved_id = extract_id(existing.lines[0]) if existing else None
+    resolved_id = resolved_id or task_id or next_id("TASK", [task_file])
+    remove_task(sections, resolved_id if existing_section else title)
     target = {
         "active": "Active",
         "waiting": "Waiting On",
         "someday": "Someday",
     }[status]
-    append_task(sections, target, format_open_task(title, context))
+    append_task(sections, target, format_open_task(resolved_id, title, context))
     write_task_file(task_file, preamble, sections)
+    return resolved_id
 
 
-def done_task(task_file: Path, title: str) -> None:
+def done_task(task_file: Path, identifier: str) -> str:
     init_task_file(task_file)
     preamble, sections = parse_sections(task_file.read_text(encoding="utf-8"))
-    _, removed = remove_task(sections, title)
-    append_task(sections, "Done", format_done_task(removed, title))
+    _, removed = remove_task(sections, identifier)
+    if removed is None:
+        raise ValueError(f"task not found: {identifier}")
+    task_id = extract_id(removed.lines[0])
+    if task_id is None:
+        task_id = next_id("TASK", [task_file])
+    title = extract_title(removed.lines[0])
+    append_task(sections, "Done", format_done_task(removed, task_id, title))
     write_task_file(task_file, preamble, sections)
+    return task_id
 
 
 def main() -> int:
@@ -217,6 +238,7 @@ def main() -> int:
     add_parser.add_argument("title", help="Task title")
     add_parser.add_argument("--status", default="active", choices=["active", "waiting", "someday"])
     add_parser.add_argument("--context", help="Optional task context")
+    add_parser.add_argument("--task-id", help="Stable task ID to preserve")
 
     done_parser = subparsers.add_parser("done", help="Mark a task as done")
     done_parser.add_argument("title", help="Task title")
@@ -226,11 +248,11 @@ def main() -> int:
     task_file = choose_task_file(repo_root)
 
     if args.command == "add":
-        add_task(task_file, args.title, args.status, args.context)
+        task_id = add_task(task_file, args.title, args.status, args.context, args.task_id)
     elif args.command == "done":
-        done_task(task_file, args.title)
+        task_id = done_task(task_file, args.title)
 
-    print(task_file)
+    print(f"{task_file}\t{task_id}")
     return 0
 
 

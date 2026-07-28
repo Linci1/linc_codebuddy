@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from identity import next_id, work_item_sources
 from lib import get_repo_root, slugify
 
 
@@ -278,6 +279,7 @@ def _parse_previous_work_item(path: Path, context: dict[str, Any]) -> None:
 
 
 def build_content(
+    work_item_id: str,
     title: str,
     route: str,
     mode: str,
@@ -314,6 +316,7 @@ def build_content(
             validation_evidence = context_overrides["validation_evidence"]
     values = {
         "title": title,
+        "work_item_id": work_item_id,
         "created_at": now.strftime("%Y-%m-%d %H:%M %Z"),
         "route": route,
         "mode": mode,
@@ -365,10 +368,12 @@ def main() -> int:
     elif args.route == "review":
         context_overrides = _populate_review_from_diff(repo_root)
 
+    work_item_id = next_id("WI", work_item_sources(repo_root))
     timestamp = datetime.now().strftime("%Y%m%d-%H%M")
-    filename = f"{timestamp}-{slugify(args.title)}.md"
+    filename = f"{work_item_id}-{timestamp}-{slugify(args.title)}.md"
     output_path = unique_path(worklog_dir, filename)
     content = build_content(
+        work_item_id=work_item_id,
         title=args.title,
         route=args.route,
         mode=args.mode,
