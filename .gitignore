@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 .playwright-cli/
 .codex/linc_codebuddy/state.json
+.venv-mcp/

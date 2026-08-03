@@ -57,8 +57,9 @@ linc-codebuddy --json --repo <path> patrol --preset morning     # 巡检
 
 `--json` 输出结构化 JSON，agent 自行解析 `detected_route` 和 `action` 字段决定后续行为。agent 不需要知道该调 `ship` 还是 `continue`——`auto` 子命令自动检测。
 
-### MCP Server 模式（自动发现）
-本工具集已注册为 Claude Code MCP server。所有 agent 启动时会自动在 tool list 中看到以下工具：
+### MCP Server 模式
+
+运行 `bash install.sh` 后，安装器会把本仓库链接到 Codex Skill 目录，并在 `~/.codex/config.toml` 注册 MCP Server。重启 Codex 或新建任务后，工具列表会出现：
 
 | Tool | 用途 |
 |------|------|
@@ -71,7 +72,7 @@ linc-codebuddy --json --repo <path> patrol --preset morning     # 巡检
 | `lcb_state` | 查看 agent 状态 |
 | `lcb_kickoff` | 创建 work item |
 
-其他 agent 无需任何配置，Claude Code 启动后即可调用。仓库侦测推荐 `lcb_auto(repo_path)`，恢复工作推荐 `lcb_next(repo_path)`。
+仓库侦测推荐 `lcb_auto(repo_path)`，恢复工作推荐 `lcb_next(repo_path)`。如果工具列表中没有 `lcb_*`，先检查 Skill 链接、MCP 配置和 `.venv-mcp`，不能声称已经调用 CodeBuddy。
 
 V2 起，work item 和 task 使用稳定 ID。可执行 ship 必须显式提供 `task_id`，并且只会关闭该任务；未提供 ID 时仍可生成 ship 计划，但不会执行提交或批量关闭 Active 任务。
 
