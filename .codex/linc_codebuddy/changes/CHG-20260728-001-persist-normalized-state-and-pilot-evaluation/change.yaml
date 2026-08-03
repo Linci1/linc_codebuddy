@@ -4,8 +4,8 @@
   "project_id": "PRJ-linc-codebuddy",
   "title": "Persist normalized state and pilot evaluation",
   "level": "L1",
-  "phase": "verify",
-  "status": "active",
+  "phase": "completed",
+  "status": "completed",
   "problem": "same-schema legacy state defaults are repaired only in memory and real-project process cost is not measured",
   "outcome": "repository state restores deterministically and pilot burden can be evaluated",
   "in_scope": [],
@@ -75,8 +75,88 @@
       },
       "approval_ref": null,
       "at": "2026-07-28T22:14:01+08:00"
+    },
+    {
+      "from": "verify",
+      "to": "release",
+      "actor": "codex",
+      "reason": "CodeBuddy V2 committed and pushed to the private company GitLab repository",
+      "gate": {
+        "allowed": true,
+        "from_phase": "verify",
+        "target_phase": "release",
+        "level": "L1",
+        "missing": [],
+        "warnings": [],
+        "next_action": "transition to release",
+        "requires_approval": false,
+        "overridden": false,
+        "override": null
+      },
+      "approval_ref": null,
+      "at": "2026-08-03T16:36:04+08:00"
+    },
+    {
+      "from": "release",
+      "to": "operate",
+      "actor": "codex",
+      "reason": "CodeBuddy V2 is available for real-project usage and operational observation",
+      "gate": {
+        "allowed": true,
+        "from_phase": "release",
+        "target_phase": "operate",
+        "level": "L1",
+        "missing": [],
+        "warnings": [],
+        "next_action": "transition to operate",
+        "requires_approval": false,
+        "overridden": false,
+        "override": null
+      },
+      "approval_ref": null,
+      "at": "2026-08-03T16:36:04+08:00"
+    },
+    {
+      "from": "operate",
+      "to": "learn",
+      "actor": "codex",
+      "reason": "Pilot showed no repeated orchestration bottleneck; V3 remains no-go pending real usage evidence",
+      "gate": {
+        "allowed": true,
+        "from_phase": "operate",
+        "target_phase": "learn",
+        "level": "L1",
+        "missing": [],
+        "warnings": [],
+        "next_action": "transition to learn",
+        "requires_approval": false,
+        "overridden": false,
+        "override": null
+      },
+      "approval_ref": null,
+      "at": "2026-08-03T16:36:05+08:00"
+    },
+    {
+      "from": "learn",
+      "to": "completed",
+      "actor": "codex",
+      "reason": "V2.0-V2.4 implementation, verification, private GitLab publication, and pilot review are complete",
+      "gate": {
+        "allowed": true,
+        "from_phase": "learn",
+        "target_phase": "completed",
+        "level": "L1",
+        "missing": [],
+        "warnings": [],
+        "next_action": "transition to completed",
+        "requires_approval": false,
+        "overridden": false,
+        "override": null
+      },
+      "approval_ref": null,
+      "at": "2026-08-03T16:36:05+08:00"
     }
   ],
   "created_at": "2026-07-28T22:11:27+08:00",
-  "updated_at": "2026-07-28T22:14:01+08:00"
+  "updated_at": "2026-08-03T16:36:05+08:00"
 }
