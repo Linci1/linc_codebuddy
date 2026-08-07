@@ -190,6 +190,16 @@ def transition_change(
     gate = evaluate_gate(repo_root, change, target_phase, override=override, actor=actor, reason=reason, approval_ref=approval_ref)
     if not gate["allowed"]:
         return {"transitioned": False, "change": change, "change_file": str(path), "gate": gate}
+
+    # Generate lightweight docs on phase transitions (best-effort, never blocks)
+    generated_docs: list[str] = []
+    try:
+        from doc_sync import generate_for_phase
+        for doc_path in generate_for_phase(repo_root, change_id, target_phase):
+            generated_docs.append(str(doc_path.relative_to(repo_root)))
+    except Exception:
+        pass
+
     record = {
         "from": current, "to": target_phase, "actor": actor, "reason": reason,
         "gate": gate, "approval_ref": approval_ref, "at": now_iso(),
@@ -212,4 +222,4 @@ def transition_change(
     active["phase"] = target_phase
     active["next_action"] = PHASE_NEXT_ACTION[target_phase]
     save_state(state_path, state)
-    return {"transitioned": True, "change": change, "change_file": str(path), "gate": gate}
+    return {"transitioned": True, "change": change, "change_file": str(path), "gate": gate, "generated_docs": generated_docs}

@@ -142,6 +142,44 @@ V2.1 起，kickoff 会自动选择治理深度：
    - 纯 review：直接审查，不做实现
 
 ## 模式切换规则
+## 文档管理
+
+CodeBuddy 在 lifecycle 阶段转换时自动生成三类可读 Markdown 文档（需求文档、测试报告、Release Note），存储位置由用户在 intake 时配置，不做硬编码。
+
+### 配置参数
+
+接管项目时（intake），如果检测到 `doc_config` 未配置，会输出提醒。用户需提供两个参数：
+
+1. **local_path** — 文档在项目内的存储目录（默认 `docs/changes`）
+2. **remote_target** — 远程同步目标（`gitlab:<group/repo>`、`dingtalk:<space_id>`，或留空表示仅本地）
+
+配置方式：
+- MCP: `lcb_doc_config(repo_path, local_path, remote_target)`
+- CLI: `linc-codebuddy doc-config --local-path docs/changes --remote-target gitlab:400/myrepo`
+- 查看当前配置: `lcb_doc_config(repo_path, show=true)` 或 `linc-codebuddy doc-config --show`
+
+### 自动生成时机
+
+| 阶段转换 | 生成文档 | 来源数据 |
+|---|---|---|
+| specify -> design/plan/implement | `requirements.md` | change.yaml |
+| * -> verify | `test-report.md` | evidence records + verification summary |
+| * -> release/operate | `release-note.md` | change + verification + transitions |
+
+如果 `doc_config` 未配置，转换正常进行但跳过文档生成，不阻塞流程。
+
+### 手动生成
+
+- MCP: `lcb_generate_docs(repo_path, change_id, doc_type)`
+- CLI: `linc-codebuddy generate-docs [change_id] --type all`
+
+### 远程同步
+
+`sync_docs` 是可插拔钩子。当前返回 reference-only 计划（需要显式提供 API 凭证才能执行真实推送）。支持的适配器前缀：
+- `gitlab:<repo>` — 推送到 GitLab 仓库
+- `dingtalk:<space_id>` — 推送到钉钉文档
+
+## 模式切换规则
 
 模式由 L0-L3 治理等级决定流程深度，`normal/fast` 只控制执行节奏，不能降低认证、权限、数据和生产风险等级。
 

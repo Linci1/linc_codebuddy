@@ -97,6 +97,11 @@ def command_intake(repo_root: Path) -> dict[str, Any]:
     policy, policy_meta = load_effective_policy(repo_root)
     bootstrap = run_script_json("bootstrap_repo.py", [str(repo_root)], repo_root)
     state = run_script_json("agent_state.py", ["--repo", str(repo_root), "show"], repo_root)
+
+    # Check doc config and surface prompt if missing
+    from doc_sync import check_doc_config
+    doc_config_status = check_doc_config(repo_root)
+
     return {
         "command": "intake",
         "repo_root": str(repo_root),
@@ -104,6 +109,7 @@ def command_intake(repo_root: Path) -> dict[str, Any]:
         "state": state["state"],
         "policy": policy,
         "policy_meta": policy_meta,
+        "doc_config": doc_config_status,
         "summary": (
             f"repo_shape={bootstrap['repo_shape']}; "
             f"stack={','.join(bootstrap['stack']) or 'unknown'}; "
@@ -914,6 +920,15 @@ def main() -> int:
 
     subparsers.add_parser("onboard", help="Run first-time setup and profile configuration")
 
+    doc_parser = subparsers.add_parser("doc-config", help="Configure document storage and remote sync target")
+    doc_parser.add_argument("--local-path", help="Local directory for generated docs (default: docs/changes)")
+    doc_parser.add_argument("--remote-target", help="Remote sync target (e.g. gitlab:400/repo, dingtalk:space_id, or empty)")
+    doc_parser.add_argument("--show", action="store_true", help="Show current doc config without modifying")
+
+    gen_doc_parser = subparsers.add_parser("generate-docs", help="Generate documents for a change")
+    gen_doc_parser.add_argument("change_id", nargs="?", help="Change ID (defaults to active)")
+    gen_doc_parser.add_argument("--type", choices=["requirements", "test-report", "release-note", "all"], default="all")
+
     # workspace subcommands
     ws_parser = subparsers.add_parser("workspace", help="Manage cross-repo workspace")
     ws_sub = ws_parser.add_subparsers(dest="workspace_command", required=True)
@@ -930,6 +945,39 @@ def main() -> int:
 
     if args.command == "onboard":
         payload = command_onboard()
+    elif args.command == "doc-config":
+        from doc_sync import check_doc_config, get_doc_config, set_doc_config
+        repo_root, _ = get_repo_root(Path(args.repo).resolve())
+        if args.show:
+            config = get_doc_config(repo_root)
+            payload = {"command": "doc-config", "action": "show", "config": config, "summary": str(config) or "not configured"}
+        elif args.local_path is None and args.remote_target is None:
+            status = check_doc_config(repo_root)
+            payload = {"command": "doc-config", "action": "status", **status, "summary": "configured" if status["configured"] else "not configured"}
+        else:
+            config = set_doc_config(repo_root, local_path=args.local_path, remote_target=args.remote_target)
+            payload = {"command": "doc-config", "action": "set", "config": config, "summary": f"local={config.get('local_path')}, remote={config.get('remote_target', '')}"}
+    elif args.command == "generate-docs":
+        from doc_sync import (
+            generate_requirements_doc, generate_test_report, generate_release_note,
+        )
+        repo_root, _ = get_repo_root(Path(args.repo).resolve())
+        change, _ = find_change(repo_root, args.change_id) if args.change_id else load_active_change(repo_root)
+        cid = change["id"]
+        paths = []
+        if args.type in ("requirements", "all"):
+            p = generate_requirements_doc(repo_root, cid)
+            if p:
+                paths.append(str(p))
+        if args.type in ("test-report", "all"):
+            p = generate_test_report(repo_root, cid)
+            if p:
+                paths.append(str(p))
+        if args.type in ("release-note", "all"):
+            p = generate_release_note(repo_root, cid)
+            if p:
+                paths.append(str(p))
+        payload = {"command": "generate-docs", "change_id": cid, "type": args.type, "docs": paths, "summary": f"{len(paths)} doc(s) generated"}
     elif args.command == "workspace":
         from workspace import list_repos, register, remove, summarize_repos, update_status
 

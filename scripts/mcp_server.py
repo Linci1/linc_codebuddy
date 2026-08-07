@@ -318,6 +318,70 @@ def lcb_kickoff(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
+@mcp.tool()
+def lcb_doc_config(
+    repo_path: str = ".",
+    local_path: str = "",
+    remote_target: str = "",
+    show: bool = False,
+) -> str:
+    """配置或查看文档存储参数。
+
+    接管项目时设置两个参数：
+    - local_path: 项目内文档存储目录（默认 docs/changes）
+    - remote_target: 远程同步目标（gitlab:<repo>、dingtalk:<space_id>、或空）
+    show=True 时仅查看当前配置。
+    """
+    repo_root, _ = get_repo_root(Path(repo_path).resolve())
+    from doc_sync import check_doc_config, get_doc_config, set_doc_config
+    if show:
+        config = get_doc_config(repo_root)
+        return json.dumps({"command": "doc-config", "action": "show", "config": config}, ensure_ascii=False, indent=2)
+    if not local_path and not remote_target:
+        status = check_doc_config(repo_root)
+        return json.dumps({"command": "doc-config", "action": "status", **status}, ensure_ascii=False, indent=2)
+    config = set_doc_config(
+        repo_root,
+        local_path=local_path or None,
+        remote_target=remote_target if remote_target or remote_target == "" else None,
+    )
+    return json.dumps({"command": "doc-config", "action": "set", "config": config}, ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def lcb_generate_docs(
+    repo_path: str = ".",
+    change_id: str = "",
+    doc_type: str = "all",
+) -> str:
+    """为指定 change 生成文档（需求/测试报告/release note）。
+
+    doc_type: requirements / test-report / release-note / all
+    change_id 留空时使用当前活跃 change。
+    """
+    repo_root, _ = get_repo_root(Path(repo_path).resolve())
+    from doc_sync import (
+        generate_requirements_doc, generate_test_report, generate_release_note,
+    )
+    from lifecycle import find_change, load_active_change
+    change, _ = find_change(repo_root, change_id) if change_id else load_active_change(repo_root)
+    cid = change["id"]
+    paths = []
+    if doc_type in ("requirements", "all"):
+        p = generate_requirements_doc(repo_root, cid)
+        if p:
+            paths.append(str(p))
+    if doc_type in ("test-report", "all"):
+        p = generate_test_report(repo_root, cid)
+        if p:
+            paths.append(str(p))
+    if doc_type in ("release-note", "all"):
+        p = generate_release_note(repo_root, cid)
+        if p:
+            paths.append(str(p))
+    return json.dumps({"command": "generate-docs", "change_id": cid, "docs": paths}, ensure_ascii=False, indent=2)
+
+
 def main():
     mcp.run(transport="stdio")
 
