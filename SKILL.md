@@ -202,6 +202,27 @@ CodeBuddy 在 lifecycle 阶段转换时自动生成三类可读 Markdown 文档�
 - 如果要把巡检接到 Codex automation，再读取 `references/automation-playbook.md`
 - 默认 policy 在 `assets/default-policy.json`，repo override 在 `.codex/linc_codebuddy/policy.json`
 
+## 前端设计协作
+
+CodeBuddy 不替代设计模板 Skill，也不把设计规则复制进自身。前端任务按以下轻量规则协作：
+
+- 新页面、新模块、控制台、门户、登录页或明显的视觉重做：进入 `design` 前检查项目根目录是否已有 `DESIGN.md`。
+- 没有 `DESIGN.md` 时，提醒用户使用 `bzdesignprompt` 选择模板并生成；如果用户明确暂不需要设计模板，可以继续。
+- 已有 `DESIGN.md` 时，先完整阅读并将其作为 `frontend-design` 实现约束，不重复下载或静默覆盖。
+- 文案、单个组件样式、间距、颜色或明确的局部修复：不强制调用 `bzdesignprompt`，保持极速路径。
+- `frontend-design` 负责实现页面和交互；CodeBuddy 负责需求、验收、验证证据和交付记录。
+- 设计模板与用户明确要求冲突时，以用户要求为准，并在变更记录中说明偏离。
+
+推荐协作顺序：
+
+```text
+CodeBuddy intake/classify -> bzdesignprompt -> DESIGN.md -> frontend-design -> Playwright 验证 -> CodeBuddy 交付
+```
+
+### 设计相关产物
+
+`DESIGN.md` 属于项目级设计基线。CodeBuddy 在 intake 时记录其存在与路径；涉及新页面的 L2/L3 变更，应将设计一致性纳入验收条件和视觉验证证据。
+
 ## 执行协议
 
 ### 1. Kickoff
