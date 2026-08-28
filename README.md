@@ -110,6 +110,17 @@ CodeBuddy intake/classify -> bzdesignprompt -> DESIGN.md
 - 文案、颜色、间距或单组件修复：保持轻量，不强制引入设计模板。
 - CodeBuddy 继续负责需求、验收、验证证据和交付记录。
 
+### 架构图协作
+
+需要架构图、流程图、时序图、数据流图或状态生命周期图时，CodeBuddy 优先与 `archify` 协作：
+
+```text
+CodeBuddy -> 读取仓库证据 -> Archify typed JSON
+  -> showcase validate -> 独立 HTML -> visual-check -> CodeBuddy evidence
+```
+
+Archify 负责确定性渲染和布局校验；CodeBuddy 负责判断图类型、收集真实仓库证据、保存 JSON/HTML 产物，并把验证回执纳入交付记录。
+
 ### 证据与验收追踪
 
 每条验证证据关联到具体的验收条件 ID，需求变更后自动标记旧证据为 stale，防止"测试通过但跟需求无关"的情况。

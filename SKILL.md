@@ -223,6 +223,28 @@ CodeBuddy intake/classify -> bzdesignprompt -> DESIGN.md -> frontend-design -> P
 
 `DESIGN.md` 属于项目级设计基线。CodeBuddy 在 intake 时记录其存在与路径；涉及新页面的 L2/L3 变更，应将设计一致性纳入验收条件和视觉验证证据。
 
+## 架构图协作
+
+当用户要求系统架构、部署拓扑、工作流、时序、数据流、状态生命周期图，或要求美化/转换 Mermaid 时，使用 `archify` 生成可校验的独立 HTML。CodeBuddy 不复制 Archify 渲染器，也不绕过其校验流程。
+
+协作规则：
+
+- 先选择类型：组件与边界用 `architecture`，流程与审批用 `workflow`，调用链用 `sequence`，ETL/血缘用 `dataflow`，状态迁移用 `lifecycle`。
+- 图必须反映真实仓库时，先读取代码、配置和调用证据；没有证据的节点、边界和关系不得编造。
+- 遵循 Archify 的 artifact-first 流程：先写候选 JSON，再校验；按诊断修复，不在对话里预排坐标。
+- 每次候选修改后运行 `validate`；最终交付使用 `deliver`，再运行 `visual-check`。非零退出不能报告为成功。
+- 默认静态图；动画、演示模式或额外视图必须由用户明确要求。
+- 交付物默认放在当前项目的 `docs/diagrams/`；JSON 源文件与 HTML 成品一起保留，便于后续 delta 和再生成。
+- `architecture compare` 适合设计评审和架构变更说明，必须基于两份已验证的 JSON 快照。
+- Archify Skill 或 CLI 不存在时，如实说明能力未安装；不能用普通 Mermaid 冒充通过 Archify showcase 校验。
+
+推荐链路：
+
+```text
+CodeBuddy intake/classify -> 仓库证据 -> Archify typed JSON
+  -> validate -> deliver HTML -> visual-check -> CodeBuddy evidence/交付
+```
+
 ## 执行协议
 
 ### 1. Kickoff
