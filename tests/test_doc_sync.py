@@ -48,9 +48,9 @@ class ConfigTests(DocSyncTestCase):
         self.assertIsNotNone(status["prompt"])
 
     def test_set_and_get_doc_config(self) -> None:
-        config = set_doc_config(self.repo, local_path="custom/docs", remote_target="gitlab:400/myrepo")
+        config = set_doc_config(self.repo, local_path="custom/docs", remote_target="gitlab:group/myrepo")
         self.assertEqual(config["local_path"], "custom/docs")
-        self.assertEqual(config["remote_target"], "gitlab:400/myrepo")
+        self.assertEqual(config["remote_target"], "gitlab:group/myrepo")
         loaded = get_doc_config(self.repo)
         self.assertEqual(loaded["local_path"], "custom/docs")
 
@@ -61,11 +61,11 @@ class ConfigTests(DocSyncTestCase):
         self.assertIsNone(status["prompt"])
 
     def test_partial_update_keeps_existing_fields(self) -> None:
-        set_doc_config(self.repo, local_path="docs/x", remote_target="gitlab:400/r")
+        set_doc_config(self.repo, local_path="docs/x", remote_target="gitlab:group/r")
         set_doc_config(self.repo, local_path="docs/y")
         config = get_doc_config(self.repo)
         self.assertEqual(config["local_path"], "docs/y")
-        self.assertEqual(config["remote_target"], "gitlab:400/r")
+        self.assertEqual(config["remote_target"], "gitlab:group/r")
 
 
 class DocumentGenerationTests(DocSyncTestCase):
@@ -151,12 +151,12 @@ class SyncTests(DocSyncTestCase):
         self.assertFalse(result["synced"])
 
     def test_sync_gitlab_returns_reference(self) -> None:
-        set_doc_config(self.repo, local_path="docs/changes", remote_target="gitlab:400/myrepo")
+        set_doc_config(self.repo, local_path="docs/changes", remote_target="gitlab:group/myrepo")
         generate_for_phase(self.repo, self.change["id"], "implement")
         result = sync_docs(self.repo, self.change["id"])
         self.assertFalse(result["synced"])
         self.assertEqual(result["adapter"], "gitlab")
-        self.assertEqual(result["would_push_to"], "400/myrepo")
+        self.assertEqual(result["would_push_to"], "group/myrepo")
         self.assertTrue(len(result["files"]) > 0)
 
     def test_sync_dingtalk_returns_reference(self) -> None:

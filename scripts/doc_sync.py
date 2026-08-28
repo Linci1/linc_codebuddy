@@ -60,7 +60,7 @@ def check_doc_config(repo_root: Path) -> dict[str, Any]:
     prompt = (
         "请配置文档存储参数（两个）：\n"
         "1. local_path — 文档在项目内的存储目录（默认 docs/changes）\n"
-        "2. remote_target — 远程同步目标（如 gitlab:400/pandawiki-eco-partner，"
+        "2. remote_target — 远程同步目标（如 gitlab:group/project，"
         "dingtalk:<space_id>，或留空表示仅本地存储）\n"
         "使用 lcb_doc_config 或 `linc-codebuddy doc-config` 设置。"
     )

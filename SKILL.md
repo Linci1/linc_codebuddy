@@ -155,7 +155,7 @@ CodeBuddy 在 lifecycle 阶段转换时自动生成三类可读 Markdown 文档�
 
 配置方式：
 - MCP: `lcb_doc_config(repo_path, local_path, remote_target)`
-- CLI: `linc-codebuddy doc-config --local-path docs/changes --remote-target gitlab:400/myrepo`
+- CLI: `linc-codebuddy doc-config --local-path docs/changes --remote-target gitlab:group/myrepo`
 - 查看当前配置: `lcb_doc_config(repo_path, show=true)` 或 `linc-codebuddy doc-config --show`
 
 ### 自动生成时机

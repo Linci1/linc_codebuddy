@@ -922,7 +922,7 @@ def main() -> int:
 
     doc_parser = subparsers.add_parser("doc-config", help="Configure document storage and remote sync target")
     doc_parser.add_argument("--local-path", help="Local directory for generated docs (default: docs/changes)")
-    doc_parser.add_argument("--remote-target", help="Remote sync target (e.g. gitlab:400/repo, dingtalk:space_id, or empty)")
+    doc_parser.add_argument("--remote-target", help="Remote sync target (e.g. gitlab:group/repo, dingtalk:space_id, or empty)")
     doc_parser.add_argument("--show", action="store_true", help="Show current doc config without modifying")
 
     gen_doc_parser = subparsers.add_parser("generate-docs", help="Generate documents for a change")

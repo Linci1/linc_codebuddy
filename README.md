@@ -24,6 +24,8 @@ bash install.sh
 
 重启 Codex Desktop 或新建任务后生效。
 
+如果使用 cc-switch 等工具管理 Codex 配置，请在该工具中同时启用 CodeBuddy Skill 和 MCP Server，避免切换模型时覆盖 `~/.codex/config.toml` 中的 MCP 注册。
+
 ## 三种使用方式
 
 ### 1. Skill（对话模式）
@@ -94,6 +96,20 @@ explore -> specify -> design -> plan -> implement
 
 不配置则跳过，不阻塞流程。
 
+### 前端设计协作
+
+前端任务采用职责分离的协作链路：
+
+```text
+CodeBuddy intake/classify -> bzdesignprompt -> DESIGN.md
+  -> frontend-design -> Playwright 验证 -> CodeBuddy 交付
+```
+
+- 新页面、新模块、控制台、门户或视觉重做：先检查 `DESIGN.md`，缺失时使用 `bzdesignprompt` 选择模板。
+- 已有 `DESIGN.md`：直接作为 `frontend-design` 的实现约束，不重复覆盖。
+- 文案、颜色、间距或单组件修复：保持轻量，不强制引入设计模板。
+- CodeBuddy 继续负责需求、验收、验证证据和交付记录。
+
 ### 证据与验收追踪
 
 每条验证证据关联到具体的验收条件 ID，需求变更后自动标记旧证据为 stale，防止"测试通过但跟需求无关"的情况。
@@ -138,4 +154,4 @@ python3 -B -m unittest discover -s tests -v # 完整测试
 
 ## License
 
-私有项目，不对外开放。
+当前仓库尚未附加开源许可证。未经作者明确许可，不授予复制、修改或再分发权利。
